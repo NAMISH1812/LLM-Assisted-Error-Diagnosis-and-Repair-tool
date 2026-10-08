@@ -1,0 +1,7 @@
+// Syntax error: the '(' of the if-condition is never closed.
+int abs(int x) {
+    if ((x < 0) {
+        return -x;
+    }
+    return x;
+}

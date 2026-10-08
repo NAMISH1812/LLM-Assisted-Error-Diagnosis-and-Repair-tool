@@ -1,0 +1,6 @@
+// Lexical errors: '&' is not a Toy-C operator, and '@' is not a valid character.
+int main() {
+    bool ok = true & false;
+    int x = 3 @ 4;
+    return 0;
+}

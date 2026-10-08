@@ -1,0 +1,87 @@
+(* ===========================================================================
+   Toy-C Language Formal EBNF Grammar
+   Course: BCSE307L - Compiler Design
+   Phase 1 Specification
+   =========================================================================== *)
+
+(* Lexical Structure *)
+
+letter          = "A" | "B" | ... | "Z" | "a" | "b" | ... | "z" | "_" ;
+digit           = "0" | "1" | ... | "9" ;
+ident           = letter , { letter | digit } ;
+int_literal     = digit , { digit } ;
+bool_literal    = "true" | "false" ;
+
+type_specifier  = "int" | "bool" | "void" ;
+
+(* Program & Top-Level Declarations *)
+
+program         = { declaration } , EOF ;
+
+declaration     = type_specifier , ident , ( function_rest | var_decl_rest ) ;
+
+function_rest   = "(" , [ parameter_list ] , ")" , block ;
+
+parameter_list  = parameter , { "," , parameter } ;
+
+parameter       = type_specifier , ident ;
+
+var_decl_rest   = [ "=" , expression ] , ";" ;
+
+(* Statements *)
+
+statement       = var_declaration
+                | if_statement
+                | while_statement
+                | return_statement
+                | block
+                | expr_statement
+                ;
+
+var_declaration = type_specifier , ident , [ "=" , expression ] , ";" ;
+
+block           = "{" , { statement } , "}" ;
+
+if_statement    = "if" , "(" , expression , ")" , statement , [ "else" , statement ] ;
+
+while_statement = "while" , "(" , expression , ")" , statement ;
+
+return_statement= "return" , [ expression ] , ";" ;
+
+expr_statement  = expression , ";" ;
+
+(* Expressions (ordered by precedence from lowest to highest) *)
+
+expression      = assignment ;
+
+assignment      = ident , "=" , assignment
+                | logic_or
+                ;
+
+logic_or        = logic_and , { "||" , logic_and } ;
+
+logic_and       = equality , { "&&" , equality } ;
+
+equality        = comparison , { ( "==" | "!=" ) , comparison } ;
+
+comparison      = term , { ( "<" | "<=" | ">" | ">=" ) , term } ;
+
+term            = factor , { ( "+" | "-" ) , factor } ;
+
+factor          = unary , { ( "*" | "/" | "%" ) , unary } ;
+
+unary           = ( "!" | "-" ) , unary
+                | call
+                ;
+
+call            = ident , "(" , [ argument_list ] , ")"
+                | primary
+                ;
+
+argument_list   = expression , { "," , expression } ;
+
+primary         = int_literal
+                | bool_literal
+                | ident
+                | "(" , expression , ")"
+                ;

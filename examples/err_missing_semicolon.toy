@@ -1,0 +1,6 @@
+// Syntax error: the declaration of `count` is missing its ';'.
+int main() {
+    int count = 5
+    int doubled = count * 2;
+    return doubled;
+}

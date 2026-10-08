@@ -1,0 +1,28 @@
+// A valid Toy-C program: recursion, loops, globals and boolean logic.
+int limit = 10;
+
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+bool is_even(int x) {
+    return x % 2 == 0;
+}
+
+int main() {
+    int i = 0;
+    int total = 0;
+    /* sum the factorials of the even numbers below limit */
+    while (i < limit) {
+        if (is_even(i) && !(i == 0)) {
+            total = total + factorial(i);
+        } else {
+            total = total - 1;
+        }
+        i = i + 1;
+    }
+    return total;
+}

@@ -1,0 +1,11 @@
+// Several independent syntax errors -- the parser recovers and reports each one.
+int area(int w, int h) {
+    int a = w * ;
+    return a;
+}
+
+int main() {
+    int 2x = 4;
+    5 = area(2, 3);
+    return 0;
+}
