@@ -1,0 +1,6 @@
+int compute() {
+    return true;
+}
+int main() {
+    return compute();
+}

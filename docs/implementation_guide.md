@@ -178,78 +178,72 @@ This section details how to develop the complete system from scratch across both
 
 ---
 
-### Step 5: Semantic Analysis (Phase 2 — Next Step)
-*To be implemented in Week 3:*
-
-1. **Symbol Table & Scopes:**
-   - Create a `SymbolTable` class supporting nested lexical scopes (`Scope` stack).
-   - Record variable names, types (`int`, `bool`, `void`), declaration locations, and function signatures (parameters + return types).
-2. **Semantic Checks:**
-   - **Undeclared Variables:** Flag variable usage without prior declaration in current or enclosing scopes (`SEM_UNDECLARED_VARIABLE`).
-   - **Duplicate Declarations:** Flag redeclaring an identifier in the same scope (`SEM_DUPLICATE_DECLARATION`).
-   - **Type Checking:** Ensure operands to `+`, `-`, `*`, `/`, `%` are integer; condition in `if`/`while` is boolean; assignment types match (`SEM_TYPE_MISMATCH`).
-   - **Function Signature Validation:** Verify argument count and parameter types on calls (`SEM_ARGUMENT_MISMATCH`, `SEM_UNDEFINED_FUNCTION`).
-3. **Emit Semantic Diagnostics:**
-   - Integrate semantic errors into the identical `Diagnostic` schema used by syntax errors.
+### Step 5: Semantic Analysis (Phase 2 — Complete)
+- [x] **Symbol Table & Scopes:**
+  - `SymbolTable` class supporting nested lexical scopes (`Scope` stack).
+  - Records variable names, types (`int`, `bool`, `void`), declaration locations, and function signatures.
+- [x] **Semantic Checks:**
+  - **Undeclared Variables:** Flag variable usage without prior declaration (`SEM_UNDECLARED_VARIABLE`) with spelling typo suggestions (`difflib`).
+  - **Duplicate Declarations:** Flag redeclaring an identifier in the same scope (`SEM_DUPLICATE_DECLARATION`).
+  - **Type Checking:** Ensure operands to arithmetic operators are `int`, condition in `if`/`while` is `bool`, assignment types match (`SEM_TYPE_MISMATCH`).
+  - **Function Validation:** Verify argument count and parameter types on calls (`SEM_ARGUMENT_MISMATCH`, `SEM_UNDEFINED_FUNCTION`, `SEM_NOT_CALLABLE`).
+- [x] **Unified Semantic Diagnostics:**
+  - Emit semantic errors into the identical `Diagnostic` schema used by syntax errors with detailed type and symbol snapshots.
 
 ### Step 6: Error-Context Extraction & LLM Integration
-*To be implemented in Week 3 & 4:*
+- [x] **Context Extraction Engine (`toyc/context.py`):**
+  - Slices surrounding source code lines with visual indicators.
+  - Slices relevant in-scope symbol table entries.
+- [x] **Error-Type-Specific Prompt Templates (`toyc/prompts.py`):**
+  - `PromptSyntaxMissingDelimiter`: Injects opener line/col and expected delimiter.
+  - `PromptUndeclaredVariable`: Injects active symbols in scope to suggest typos or missing declarations.
+  - `PromptTypeMismatch`: Injects expected operand types and inferred sub-expression types.
+  - `PromptUndefinedFunction`: Injects callee signature expectations and available declarations.
+  - `PromptGenericBaseline`: Generic prompt used as the control for ablation study.
+- [x] **LLM Client Integration (`toyc/llm.py`):**
+  - Gemini Interactions API integration with model `gemini-3.8-flash`.
+  - Built-in heuristic offline mock client for deterministic evaluation and testing without API keys.
 
-1. **Context Extraction Engine:**
-   - On error, slice surrounding source code lines (e.g., 3 lines before and after).
-   - Extract the local symbol table snapshot (declared variables and their types in scope).
-2. **Error-Type-Specific Prompt Templates:**
-   - Implement distinct prompt templates rather than a generic prompt:
-     - `PromptSyntaxMissingDelimiter`: Injects opener line/col and expected delimiter.
-     - `PromptUndeclaredVariable`: Injects active symbols in scope to suggest typos or missing declarations.
-     - `PromptTypeMismatch`: Injects expected operand types and inferred sub-expression types.
-     - `PromptGenericBaseline`: Generic prompt used as the control for ablation study.
-3. **LLM Client Integration:**
-   - Connect to LLM API (e.g., Gemini API via `google-genai`).
-   - Send formatted structured diagnostic + extracted context.
-   - Parse response for plain-English explanation and concrete patch/fix code.
+### Step 7: Automated Fix Verification Layer (`toyc/verifier.py`)
+- [x] **In-Memory Recompilation:**
+  - Parses and recompiles proposed fixes through the complete compiler pipeline.
+- [x] **Verification Status Tagging:**
+  - Marks diagnostics as `[VERIFIED FIX]` (clean recompilation) or `[UNVERIFIED - FIX FAILED]`.
+  - Calculates unified diffs between original and repaired code.
 
-### Step 7: Automated Fix Verification Layer
-*To be implemented in Week 4:*
-
-1. **In-Memory Recompilation:**
-   - Take the LLM's suggested code patch and substitute it into the source buffer.
-   - Pass the patched source back into `compile_source()`.
-2. **Verification Status Tagging:**
-   - If the patched code compiles without errors $\implies$ mark diagnostic as `[VERIFIED FIX]`.
-   - If new errors are generated $\implies$ mark as `[UNVERIFIED - FIX FAILED]`.
-
-### Step 8: Evaluation Suite & Comparative Study
-*To be implemented in Week 4:*
-
-1. **Curate Benchmark Dataset:**
-   - Assemble 15–20 benchmark buggy programs covering syntax errors, undeclared variables, type mismatches, and operator precedence confusion.
-2. **Run Comparative Evaluations:**
-   - **Evaluation 1:** Toy-C Structured Output vs. Raw GCC/Clang `stderr` diagnostics.
-   - **Evaluation 2 (Ablation Study):** Error-type-specific prompting vs. Generic single-prompt baseline.
-3. **Evaluation Metrics:**
-   - Explanation clarity & novice readability (rubric-scored).
-   - Fix verification success rate (% of code suggestions that compile clean).
+### Step 8: Evaluation Suite & Comparative Study (`toyc/evaluation.py`)
+- [x] **Curate Benchmark Dataset:**
+  - 20 benchmark buggy programs in `examples/benchmarks/` covering all error categories.
+- [x] **Run Comparative Evaluations:**
+  - **Evaluation 1:** Toy-C Structured Output vs. Raw GCC/Clang `stderr` diagnostics.
+  - **Evaluation 2 (Ablation Study):** Error-type-specific prompting vs. Generic single-prompt baseline.
+- [x] **Evaluation Metrics:**
+  - Educational rubric scoring for novice accessibility and compiler fact grounding.
+  - Fix verification success rate (% of code suggestions compiling clean).
 
 ---
 
 ## 4. Verification and Quick Commands
 
-Run these commands in the terminal to verify the current Phase 1 implementation:
+Run these commands in the terminal to verify the complete Phase 1 and Phase 2 implementation:
 
 ```bash
 # 1. View DFA generation statistics (67 states, 62 accepting, 2730 transitions)
 .\toycompiler.bat dfa-stats
 
-# 2. Run valid program and inspect AST
-.\toycompiler.bat run examples\valid_factorial.toy --ast
+# 2. Run valid program and inspect AST & symbol table
+.\toycompiler.bat run examples\valid_factorial.toy --ast --symbols
 
-# 3. Test syntax error diagnostics with human-readable visual carets
-.\toycompiler.bat run examples\err_missing_semicolon.toy
+# 3. Test LLM diagnosis and automated fix verification on a syntax error
+.\toycompiler.bat diagnose examples\err_missing_semicolon.toy
 
-# 4. Test machine-readable JSON diagnostic output
-.\toycompiler.bat run examples\err_unbalanced_paren.toy --json
+# 4. Test LLM diagnosis on a semantic error
+.\toycompiler.bat diagnose examples\benchmarks\12_sem_var_typo.toy
 
-# 5. Run full test suite (43 tests passing)
+# 5. Run the 20-benchmark comparative study & ablation report
+.\toycompiler.bat eval --output evaluation_report.md --json
+
+# 6. Run full unit test suite (75 tests passing)
 python -m unittest discover -s tests -v
 ```
+

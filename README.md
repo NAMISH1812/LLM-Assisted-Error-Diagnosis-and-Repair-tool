@@ -1,36 +1,106 @@
-# Toy-C Compiler (Phase 1)
+# Toy-C Compiler & LLM Error Diagnosis and Repair Tool
 
 **LLM-Assisted Compiler Error Diagnosis and Repair Tool**  
-*Course:* BCSE307L — Compiler Design (Phase 1 — 25% Implementation)
+*Course:* BCSE307L — Compiler Design  
+*Author:* Namish (3rd Year CSE)
 
 ---
 
 ## Overview
 
-Toy-C is a lightweight C-subset compiler front-end built from scratch to demonstrate structured diagnostic generation for compiler errors. Unlike standard compilers that emit flattened text error strings, Toy-C generates typed, rich `Diagnostic` objects carrying grammar rule stacks, expected/found tokens, source spans, and opener references to empower downstream LLM analysis.
+Toy-C is a complete C-subset compiler front-end and automated repair system built from scratch. Rather than treating compilers as black boxes that emit unformatted error strings, Toy-C generates typed, rich `Diagnostic` objects carrying grammar rule stacks, expected/found tokens, line/column spans, delimiter openers, and scoped symbol tables.
 
-## Features Implemented (Phase 1)
+These internal compiler diagnostics are piped into an **error-type-specific LLM prompting engine** (powered by Google Gemini `gemini-3.8-flash` via the Interactions API or an offline deterministic heuristic client) and an **automated fix verification layer** that recompiles proposed repairs before presenting them as `[VERIFIED FIX]`.
 
-1. **Regex-to-DFA Lexer Engine:**
-   - Formal regex parser: concatenation, alternation `|`, Kleene `*`, `+`, `?`, character classes `[...]` and negated classes `[^...]`.
-   - Thompson's Construction ($\epsilon$-NFA) $\to$ Subset Construction (DFA) $\to$ Moore's Partition Refinement (Minimal DFA).
-   - Maximal-munch tokenization with line and column span tracking.
-   - Lexical error detection with intelligent recovery and hints.
+---
 
-2. **Recursive-Descent Parser:**
-   - EBNF grammar implementation supporting variable declarations, functions, blocks, `if`/`else`, `while`, `return`, arithmetic, logical and comparison expressions.
-   - Live grammar rule stack tracking attached to every diagnostic.
-   - Delimiter matching tracking initial opener spans (e.g. unclosed parentheses or braces).
-   - Panic-mode recovery at statement and declaration boundaries for multi-error diagnostics.
+## System Architecture Pipeline
 
-3. **Structured Diagnostics Architecture:**
-   - Typed error codes (`SYN_MISSING_SEMICOLON`, `SYN_UNBALANCED_DELIMITER`, etc.).
-   - Machine-readable JSON output format designed for LLM prompts in Phase 2.
-   - Rustc-style visual diagnostics with ASCII carets and context hints.
+```
+                              +-----------------------------------------------+
+                              |                 Source Code                   |
+                              +-----------------------------------------------+
+                                                      |
+                                                      v
+                              +-----------------------------------------------+
+                              |         Stage 1: DFA-Driven Lexer             |
+                              |  - Regex -> NFA -> DFA -> Minimal DFA         |
+                              |  - Line/Col/Span tracking                     |
+                              +-----------------------------------------------+
+                                                      |
+                                       [Token Stream with Spans]
+                                                      |
+                                                      v
+                              +-----------------------------------------------+
+                              |    Stage 2: Recursive-Descent Parser          |
+                              |  - EBNF grammar implementation                |
+                              |  - Live rule-stack tracker                    |
+                              |  - Panic-mode boundary synchronization        |
+                              +-----------------------------------------------+
+                                       /                             \
+                                      /                               \
+                                     v                                 v
+            +---------------------------------+      +---------------------------------+
+            |      Abstract Syntax Tree       |      |   Structured Syntax Diagnostic  |
+            |  (Program, Function, Stmt, Expr)|      |  - Error code & category        |
+            +---------------------------------+      |  - Expected / Found tokens      |
+                             |                       |  - Grammar rule stack trace     |
+                             v                       +---------------------------------+
+            +---------------------------------+                       |
+            |   Stage 3: Semantic Analysis    |                       v
+            |  - Symbol table & Scope tree    |      +---------------------------------+
+            |  - Type checking & resolution   |----->|  Unified Compiler Diagnostic    |
+            +---------------------------------+      |  - Symbol table slice & types   |
+                                                     +---------------------------------+
+                                                                      |
+                                                                      v
+                                                     +---------------------------------+
+                                                     | Stage 4: Error-Type Prompting   |
+                                                     |  - Missing Delimiter Template   |
+                                                     |  - Undeclared Variable Template |
+                                                     |  - Type Mismatch Template       |
+                                                     |  - Undefined Function Template  |
+                                                     |  - Generic Baseline (Ablation)  |
+                                                     +---------------------------------+
+                                                                      |
+                                                                      v
+                                                     +---------------------------------+
+                                                     | Stage 5: In-Memory Verification |
+                                                     |  - Recompilation through pipeline|
+                                                     |  - [VERIFIED FIX] Tagging       |
+                                                     |  - Unified Diff Generation      |
+                                                     +---------------------------------+
+```
 
-4. **CLI & Test Suite:**
-   - CLI utility `toycompiler.bat` supporting `run`, `--tokens`, `--ast`, `--json`, and `dfa-stats`.
-   - 43 unit tests covering regex engine, DFA minimization, lexer edge cases, operator precedence, associativity, and error recovery.
+---
+
+## Features Implemented
+
+### 1. Front-End Compiler Pipeline
+- **Regex-to-DFA Lexer:** Formal regex AST, Thompson's $\epsilon$-NFA, Subset Construction, Moore's Partition Minimization (67 states, 62 accepting).
+- **Recursive-Descent Parser:** Strict operator precedence hierarchy, panic-mode error recovery, live grammar rule stack tracking (`with self.rule(...)`), and delimiter opener references.
+- **Semantic Analyzer:** Nested lexical scope tree (`SymbolTable`), type checking for arithmetic/logical/comparison expressions, `if`/`while` boolean condition enforcement, parameter and return type validation, and typo suggestions (`difflib`).
+
+### 2. Error-Context Extraction & Typed LLM Prompting
+- **Context Extractor (`toyc/context.py`):** Visual code slice (3 lines radius) with line carets, enclosing function signature, and visible symbol snapshot.
+- **Error-Type-Specific Prompting (`toyc/prompts.py`):**
+  - `PromptSyntaxMissingDelimiter`: Injects opener line/column and insertion points.
+  - `PromptUndeclaredVariable`: Injects active symbols in scope and spelling suggestions.
+  - `PromptTypeMismatch`: Injects required and inferred types with operator rules.
+  - `PromptUndefinedFunction`: Injects candidate functions and parameter signatures.
+  - `PromptGenericBaseline`: Ablation control mirroring raw compiler output.
+- **LLM Client (`toyc/llm.py`):** Google Gemini Interactions API (`gemini-3.8-flash`) + offline heuristic mock engine.
+
+### 3. Automated Fix Verification Layer (`toyc/verifier.py`)
+- Re-compiles proposed fixes in memory through the full compiler pipeline.
+- Tags repairs as `[VERIFIED FIX]` (clean recompilation) or `[UNVERIFIED - FIX FAILED]`.
+- Computes standard unified diffs for transparent inspection before patching.
+
+### 4. Comparative Evaluation Suite (`toyc/evaluation.py`)
+- 20 benchmark buggy programs in `examples/benchmarks/`.
+- Automated comparative evaluation: Toy-C vs. Raw GCC/Clang `stderr` output.
+- Ablation study: Error-type-specific prompting vs. Generic single-prompt baseline.
+- Rubric-scored explanation quality and fix verification rate metrics.
 
 ---
 
@@ -38,28 +108,42 @@ Toy-C is a lightweight C-subset compiler front-end built from scratch to demonst
 
 ```
 ├── toyc/
-│   ├── regex_dfa.py    # Regex parsing, Thompson NFA, Subset DFA & minimization
-│   ├── tokens.py       # Token definitions and Token spans
-│   ├── lexer.py        # DFA-driven lexer with line/col tracking
+│   ├── regex_dfa.py    # Automata theory: Regex -> NFA -> DFA -> Minimal DFA
+│   ├── tokens.py       # Token definitions and source spans
+│   ├── lexer.py        # DFA-driven tokenizer with line/col tracking
 │   ├── ast_nodes.py    # AST node definitions, JSON & ASCII tree formatters
-│   ├── errors.py       # Structured Diagnostic schema and pretty formatter
+│   ├── errors.py       # Unified structured Diagnostic schema
 │   ├── parser.py       # Recursive-descent parser with live rule-stack context
-│   ├── pipeline.py     # Compiler driver & phase gating
+│   ├── semantic.py     # Scoped symbol table, type checker & semantic diagnostics
+│   ├── context.py      # Error-context extractor (code windows & symbol slices)
+│   ├── prompts.py      # Error-type-specific prompt templates & ablation baseline
+│   ├── llm.py          # Gemini 3.8 Flash Interactions API & offline mock engine
+│   ├── verifier.py     # In-memory recompilation & unified diff generator
+│   ├── evaluation.py   # 20-benchmark evaluation & comparative study engine
+│   ├── pipeline.py     # Multi-stage compiler driver & phase gating
 │   └── cli.py          # Command line interface
 ├── docs/
-│   ├── grammar.ebnf         # Formal EBNF specification
-│   └── literature_survey.md # Literature survey, problem statement & gap analysis
+│   ├── grammar.ebnf            # Formal EBNF specification
+│   ├── implementation_guide.md # Comprehensive implementation walkthrough
+│   └── literature_survey.md    # Survey, problem statement & novelty write-up
 ├── examples/
 │   ├── valid_factorial.toy     # Valid test program (loops, recursion, logic)
 │   ├── err_missing_semicolon.toy
 │   ├── err_unbalanced_paren.toy
 │   ├── err_multiple.toy
-│   └── err_lexical.toy
+│   ├── err_lexical.toy
+│   └── benchmarks/             # 20 curated benchmark buggy programs
 ├── tests/
-│   ├── test_regex_dfa.py # DFA engine & minimization tests
-│   ├── test_lexer.py     # Tokenizer & error recovery tests
-│   └── test_parser.py    # Syntax, precedence & diagnostic tests
-└── toycompiler.bat       # Windows CLI runner
+│   ├── test_regex_dfa.py  # DFA engine & minimization tests
+│   ├── test_lexer.py      # Tokenizer & error recovery tests
+│   ├── test_parser.py     # Syntax, precedence & diagnostic tests
+│   ├── test_semantic.py   # Scoped symbol table & type checking tests
+│   ├── test_prompts.py    # Context extraction & prompt dispatch tests
+│   ├── test_verifier.py   # Automated fix verification tests
+│   └── test_evaluation.py # Benchmark suite & comparative study tests
+├── evaluation_report.md   # Generated comparative evaluation & ablation report
+├── evaluation_report.json # Machine-readable evaluation dataset
+└── toycompiler.bat        # Windows CLI runner
 ```
 
 ---
@@ -71,22 +155,27 @@ Toy-C is a lightweight C-subset compiler front-end built from scratch to demonst
 .\toycompiler.bat dfa-stats
 ```
 
-### 2. Compile a Valid Program
+### 2. Compile a Program (Tokens, AST, and Scoped Symbol Table)
 ```bash
-.\toycompiler.bat run examples\valid_factorial.toy
+.\toycompiler.bat run examples\valid_factorial.toy --tokens --ast --symbols
 ```
 
-### 3. Inspect Tokens and AST
+### 3. Diagnose an Error with LLM & Verify Fix Automatically
 ```bash
-.\toycompiler.bat run examples\valid_factorial.toy --tokens --ast
+.\toycompiler.bat diagnose examples\err_missing_semicolon.toy
 ```
 
-### 4. Emit Machine-Readable Diagnostic JSON
+### 4. Diagnose a Semantic Error (Variable Typo or Type Mismatch)
 ```bash
-.\toycompiler.bat run examples\err_missing_semicolon.toy --json
+.\toycompiler.bat diagnose examples\benchmarks\12_sem_var_typo.toy
 ```
 
-### 5. Run Full Test Suite
+### 5. Run the 20-Benchmark Evaluation & Ablation Study
+```bash
+.\toycompiler.bat eval --output evaluation_report.md --json
+```
+
+### 6. Run the Full Test Suite (75 Tests Passing)
 ```bash
 python -m unittest discover -s tests -v
 ```

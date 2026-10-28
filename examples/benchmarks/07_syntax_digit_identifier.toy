@@ -1,0 +1,4 @@
+int main() {
+    int 2count = 5;
+    return 2count;
+}

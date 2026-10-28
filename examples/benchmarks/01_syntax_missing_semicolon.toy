@@ -1,0 +1,4 @@
+int main() {
+    int total = 10
+    return total;
+}

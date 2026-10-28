@@ -1,0 +1,4 @@
+int main() {
+    int while = 10;
+    return while;
+}

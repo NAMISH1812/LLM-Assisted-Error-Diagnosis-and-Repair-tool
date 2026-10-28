@@ -6,14 +6,15 @@ from toyc.pipeline import compile_source
 
 
 def parse_ok(src: str) -> ast.Program:
-    res = compile_source(src)
+    # Syntax-only: these snippets use free identifiers on purpose.
+    res = compile_source(src, stop_after="parse")
     if res.diagnostics:
         raise AssertionError(f"unexpected errors: {[d.message for d in res.diagnostics]}")
     return res.program
 
 
 def parse_errors(src: str):
-    res = compile_source(src)
+    res = compile_source(src, stop_after="parse")
     assert res.diagnostics, "expected at least one error"
     return res.diagnostics
 

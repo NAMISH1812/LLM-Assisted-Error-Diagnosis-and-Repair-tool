@@ -1,0 +1,3 @@
+int main() {
+    return calculate_total();
+}

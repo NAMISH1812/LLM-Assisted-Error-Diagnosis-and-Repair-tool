@@ -15,7 +15,7 @@ from enum import Enum
 class ErrorCategory(str, Enum):
     LEXICAL = "lexical"
     SYNTAX = "syntax"
-    SEMANTIC = "semantic"   # reserved for Phase 2
+    SEMANTIC = "semantic"
 
 
 class ErrorCode(str, Enum):
@@ -31,10 +31,23 @@ class ErrorCode(str, Enum):
     SYN_INVALID_ASSIGNMENT_TARGET = "SYN_INVALID_ASSIGNMENT_TARGET"
     SYN_UNEXPECTED_EOF = "SYN_UNEXPECTED_EOF"
     SYN_UNEXPECTED_TOKEN = "SYN_UNEXPECTED_TOKEN"
+    # Semantic
+    SEM_UNDECLARED_VARIABLE = "SEM_UNDECLARED_VARIABLE"
+    SEM_DUPLICATE_DECLARATION = "SEM_DUPLICATE_DECLARATION"
+    SEM_TYPE_MISMATCH = "SEM_TYPE_MISMATCH"
+    SEM_UNDEFINED_FUNCTION = "SEM_UNDEFINED_FUNCTION"
+    SEM_ARGUMENT_MISMATCH = "SEM_ARGUMENT_MISMATCH"
+    SEM_NOT_CALLABLE = "SEM_NOT_CALLABLE"
+    SEM_RETURN_MISMATCH = "SEM_RETURN_MISMATCH"
+    SEM_INVALID_VOID = "SEM_INVALID_VOID"
 
     @property
     def category(self) -> ErrorCategory:
-        return ErrorCategory.LEXICAL if self.value.startswith("LEX_") else ErrorCategory.SYNTAX
+        if self.value.startswith("LEX_"):
+            return ErrorCategory.LEXICAL
+        if self.value.startswith("SEM_"):
+            return ErrorCategory.SEMANTIC
+        return ErrorCategory.SYNTAX
 
 
 @dataclass
@@ -63,6 +76,10 @@ class Diagnostic:
     source_line: str = ""
     hint: str | None = None
     related: list[RelatedLocation] = field(default_factory=list)
+    # Semantic extras: inferred/expected types, operator, typo suggestion, ...
+    details: dict = field(default_factory=dict)
+    # Snapshot of the symbols visible at the error site (name, kind, type, line)
+    symbols: list[dict] = field(default_factory=list)
 
     @property
     def category(self) -> ErrorCategory:
@@ -86,6 +103,8 @@ class Diagnostic:
             "source_line": self.source_line,
             "hint": self.hint,
             "related": [r.to_dict() for r in self.related],
+            "details": self.details,
+            "symbols": self.symbols,
         }
 
 
@@ -141,6 +160,8 @@ def format_diagnostic(d: Diagnostic, color: bool = False) -> str:
         note("rule", d.rule)
     if d.found is not None:
         note("found", f"{d.found['description']} at {d.found['line']}:{d.found['column']}")
+    if "expected_type" in d.details and "actual_type" in d.details:
+        note("types", f"expected '{d.details['expected_type']}', found '{d.details['actual_type']}'")
     for r in d.related:
         note("note", f"{r.message} at {r.line}:{r.column}")
     if d.hint:

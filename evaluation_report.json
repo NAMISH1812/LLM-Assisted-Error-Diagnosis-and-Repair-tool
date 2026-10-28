@@ -1,0 +1,426 @@
+{
+  "typed": {
+    "mode": "typed",
+    "total_benchmarks": 20,
+    "verified_count": 20,
+    "partial_count": 0,
+    "failed_count": 0,
+    "verification_rate": 100.0,
+    "average_explanation_score": 6.97,
+    "items": [
+      {
+        "file": "01_syntax_missing_semicolon.toy",
+        "category": "syntax",
+        "code": "SYN_MISSING_SEMICOLON",
+        "template": "PromptSyntaxMissingDelimiter",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: expected ';' before 'return' at line 2:19"
+      },
+      {
+        "file": "02_syntax_unbalanced_paren.toy",
+        "category": "syntax",
+        "code": "SYN_UNBALANCED_DELIMITER",
+        "template": "PromptSyntaxMissingDelimiter",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.0,
+        "gcc_equivalent": "error: expected ')' before '{' token at line 3:18"
+      },
+      {
+        "file": "03_syntax_unbalanced_brace.toy",
+        "category": "syntax",
+        "code": "SYN_UNBALANCED_DELIMITER",
+        "template": "PromptSyntaxMissingDelimiter",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.0,
+        "gcc_equivalent": "error: expected ')' before '{' token at line 7:1"
+      },
+      {
+        "file": "04_syntax_invalid_assignment.toy",
+        "category": "syntax",
+        "code": "SYN_INVALID_ASSIGNMENT_TARGET",
+        "template": "PromptSyntaxGeneral",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.0,
+        "gcc_equivalent": "error: invalid assignment target: the left-hand side of '=' must be a variable name at line 3:5"
+      },
+      {
+        "file": "05_syntax_missing_operand.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_EXPRESSION",
+        "template": "PromptSyntaxGeneral",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: expected an expression after '+', found ';' at line 2:17"
+      },
+      {
+        "file": "06_syntax_keyword_as_identifier.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_IDENTIFIER",
+        "template": "PromptSyntaxGeneral",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.5,
+        "gcc_equivalent": "error: expected identifier after type specifier, found keyword 'while' at line 2:9"
+      },
+      {
+        "file": "07_syntax_digit_identifier.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_IDENTIFIER",
+        "template": "PromptSyntaxGeneral",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: expected identifier after type specifier, found integer literal '2' at line 2:9"
+      },
+      {
+        "file": "08_syntax_missing_type.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_TYPE",
+        "template": "PromptSyntaxGeneral",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.0,
+        "gcc_equivalent": "error: expected a type specifier at start of a declaration, found identifier 'x' at line 1:1"
+      },
+      {
+        "file": "09_lex_unexpected_char.toy",
+        "category": "lexical",
+        "code": "LEX_UNEXPECTED_CHAR",
+        "template": "PromptSyntaxGeneral",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.0,
+        "gcc_equivalent": "error: unexpected character '@' at line 2:15"
+      },
+      {
+        "file": "10_lex_unterminated_comment.toy",
+        "category": "lexical",
+        "code": "LEX_UNTERMINATED_COMMENT",
+        "template": "PromptSyntaxGeneral",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 4.5,
+        "gcc_equivalent": "error: unterminated block comment at line 2:5"
+      },
+      {
+        "file": "11_sem_undeclared_var.toy",
+        "category": "semantic",
+        "code": "SEM_UNDECLARED_VARIABLE",
+        "template": "PromptUndeclaredVariable",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 9.0,
+        "gcc_equivalent": "error: 'missing_var' undeclared (first use in this function) at line 3:16"
+      },
+      {
+        "file": "12_sem_var_typo.toy",
+        "category": "semantic",
+        "code": "SEM_UNDECLARED_VARIABLE",
+        "template": "PromptUndeclaredVariable",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: 'conter' undeclared (first use in this function) at line 3:12"
+      },
+      {
+        "file": "13_sem_duplicate_decl.toy",
+        "category": "semantic",
+        "code": "SEM_DUPLICATE_DECLARATION",
+        "template": "PromptUndeclaredVariable",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: redefinition of 'result' at line 3:5"
+      },
+      {
+        "file": "14_sem_type_mismatch_arith.toy",
+        "category": "semantic",
+        "code": "SEM_TYPE_MISMATCH",
+        "template": "PromptTypeMismatch",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: invalid operands to binary expression at line 4:16"
+      },
+      {
+        "file": "15_sem_condition_not_bool.toy",
+        "category": "semantic",
+        "code": "SEM_TYPE_MISMATCH",
+        "template": "PromptTypeMismatch",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: invalid operands to binary expression at line 3:9"
+      },
+      {
+        "file": "16_sem_return_mismatch.toy",
+        "category": "semantic",
+        "code": "SEM_RETURN_MISMATCH",
+        "template": "PromptTypeMismatch",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: type mismatch in return value of 'compute': expected 'int', found 'bool' at line 2:12"
+      },
+      {
+        "file": "17_sem_invalid_void_var.toy",
+        "category": "semantic",
+        "code": "SEM_INVALID_VOID",
+        "template": "PromptTypeMismatch",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: variable 'x' cannot have type 'void' at line 2:5"
+      },
+      {
+        "file": "18_sem_undefined_function.toy",
+        "category": "semantic",
+        "code": "SEM_UNDEFINED_FUNCTION",
+        "template": "PromptUndefinedFunction",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "warning: implicit declaration of function 'calculate_total' [-Wimplicit-function-declaration]"
+      },
+      {
+        "file": "19_sem_arg_count_mismatch.toy",
+        "category": "semantic",
+        "code": "SEM_ARGUMENT_MISMATCH",
+        "template": "PromptUndefinedFunction",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: function 'add' expects 2 arguments, but 1 was given at line 5:12"
+      },
+      {
+        "file": "20_sem_arg_type_mismatch.toy",
+        "category": "semantic",
+        "code": "SEM_ARGUMENT_MISMATCH",
+        "template": "PromptUndefinedFunction",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: argument 1 of 'square' has type 'bool', but parameter 'n' expects 'int' at line 5:19"
+      }
+    ]
+  },
+  "generic": {
+    "mode": "generic",
+    "total_benchmarks": 20,
+    "verified_count": 20,
+    "partial_count": 0,
+    "failed_count": 0,
+    "verification_rate": 100.0,
+    "average_explanation_score": 6.97,
+    "items": [
+      {
+        "file": "01_syntax_missing_semicolon.toy",
+        "category": "syntax",
+        "code": "SYN_MISSING_SEMICOLON",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: expected ';' before 'return' at line 2:19"
+      },
+      {
+        "file": "02_syntax_unbalanced_paren.toy",
+        "category": "syntax",
+        "code": "SYN_UNBALANCED_DELIMITER",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.0,
+        "gcc_equivalent": "error: expected ')' before '{' token at line 3:18"
+      },
+      {
+        "file": "03_syntax_unbalanced_brace.toy",
+        "category": "syntax",
+        "code": "SYN_UNBALANCED_DELIMITER",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.0,
+        "gcc_equivalent": "error: expected ')' before '{' token at line 7:1"
+      },
+      {
+        "file": "04_syntax_invalid_assignment.toy",
+        "category": "syntax",
+        "code": "SYN_INVALID_ASSIGNMENT_TARGET",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.0,
+        "gcc_equivalent": "error: invalid assignment target: the left-hand side of '=' must be a variable name at line 3:5"
+      },
+      {
+        "file": "05_syntax_missing_operand.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_EXPRESSION",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: expected an expression after '+', found ';' at line 2:17"
+      },
+      {
+        "file": "06_syntax_keyword_as_identifier.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_IDENTIFIER",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.5,
+        "gcc_equivalent": "error: expected identifier after type specifier, found keyword 'while' at line 2:9"
+      },
+      {
+        "file": "07_syntax_digit_identifier.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_IDENTIFIER",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: expected identifier after type specifier, found integer literal '2' at line 2:9"
+      },
+      {
+        "file": "08_syntax_missing_type.toy",
+        "category": "syntax",
+        "code": "SYN_EXPECTED_TYPE",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 8.0,
+        "gcc_equivalent": "error: expected a type specifier at start of a declaration, found identifier 'x' at line 1:1"
+      },
+      {
+        "file": "09_lex_unexpected_char.toy",
+        "category": "lexical",
+        "code": "LEX_UNEXPECTED_CHAR",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.0,
+        "gcc_equivalent": "error: unexpected character '@' at line 2:15"
+      },
+      {
+        "file": "10_lex_unterminated_comment.toy",
+        "category": "lexical",
+        "code": "LEX_UNTERMINATED_COMMENT",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 4.5,
+        "gcc_equivalent": "error: unterminated block comment at line 2:5"
+      },
+      {
+        "file": "11_sem_undeclared_var.toy",
+        "category": "semantic",
+        "code": "SEM_UNDECLARED_VARIABLE",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 9.0,
+        "gcc_equivalent": "error: 'missing_var' undeclared (first use in this function) at line 3:16"
+      },
+      {
+        "file": "12_sem_var_typo.toy",
+        "category": "semantic",
+        "code": "SEM_UNDECLARED_VARIABLE",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: 'conter' undeclared (first use in this function) at line 3:12"
+      },
+      {
+        "file": "13_sem_duplicate_decl.toy",
+        "category": "semantic",
+        "code": "SEM_DUPLICATE_DECLARATION",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: redefinition of 'result' at line 3:5"
+      },
+      {
+        "file": "14_sem_type_mismatch_arith.toy",
+        "category": "semantic",
+        "code": "SEM_TYPE_MISMATCH",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: invalid operands to binary expression at line 4:16"
+      },
+      {
+        "file": "15_sem_condition_not_bool.toy",
+        "category": "semantic",
+        "code": "SEM_TYPE_MISMATCH",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: invalid operands to binary expression at line 3:9"
+      },
+      {
+        "file": "16_sem_return_mismatch.toy",
+        "category": "semantic",
+        "code": "SEM_RETURN_MISMATCH",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: type mismatch in return value of 'compute': expected 'int', found 'bool' at line 2:12"
+      },
+      {
+        "file": "17_sem_invalid_void_var.toy",
+        "category": "semantic",
+        "code": "SEM_INVALID_VOID",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: variable 'x' cannot have type 'void' at line 2:5"
+      },
+      {
+        "file": "18_sem_undefined_function.toy",
+        "category": "semantic",
+        "code": "SEM_UNDEFINED_FUNCTION",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "warning: implicit declaration of function 'calculate_total' [-Wimplicit-function-declaration]"
+      },
+      {
+        "file": "19_sem_arg_count_mismatch.toy",
+        "category": "semantic",
+        "code": "SEM_ARGUMENT_MISMATCH",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 7.5,
+        "gcc_equivalent": "error: function 'add' expects 2 arguments, but 1 was given at line 5:12"
+      },
+      {
+        "file": "20_sem_arg_type_mismatch.toy",
+        "category": "semantic",
+        "code": "SEM_ARGUMENT_MISMATCH",
+        "template": "PromptGenericBaseline",
+        "status": "VERIFIED",
+        "verified": true,
+        "score": 6.0,
+        "gcc_equivalent": "error: argument 1 of 'square' has type 'bool', but parameter 'n' expects 'int' at line 5:19"
+      }
+    ]
+  },
+  "delta_verification_rate": 0.0,
+  "delta_explanation_score": 0.0
+}
