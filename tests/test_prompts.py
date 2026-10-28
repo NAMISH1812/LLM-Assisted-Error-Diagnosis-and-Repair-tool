@@ -69,5 +69,33 @@ class PromptAndContextTests(unittest.TestCase):
         self.assertIn("Compiler output:\n", prompt.user)
 
 
+    def test_provider_selection_and_groq_client(self):
+        from toyc.llm import GroqClient, MockLLMClient, get_llm_client, parse_llm_json
+
+        # Offline or mock
+        client = get_llm_client(offline=True)
+        self.assertIsInstance(client, MockLLMClient)
+
+        client_mock = get_llm_client(provider="mock")
+        self.assertIsInstance(client_mock, MockLLMClient)
+
+        # Groq client with explicit key
+        groq_client = get_llm_client(provider="groq", api_key="gsk_dummy_key_12345")
+        self.assertIsInstance(groq_client, GroqClient)
+        self.assertEqual(groq_client.api_key, "gsk_dummy_key_12345")
+        self.assertEqual(groq_client.model, "openai/gpt-oss-120b")
+
+        # JSON extraction parser
+        sample_json = '{"explanation": "Missing semicolon", "fix_description": "Add ;", "fixed_source": "int x = 1;"}'
+        parsed = parse_llm_json(sample_json)
+        self.assertEqual(parsed["explanation"], "Missing semicolon")
+        self.assertEqual(parsed["fixed_source"], "int x = 1;")
+
+        # Strips markdown fences
+        fence_json = '```json\n{"explanation": "A", "fix_description": "B", "fixed_source": "C"}\n```'
+        parsed_fenced = parse_llm_json(fence_json)
+        self.assertEqual(parsed_fenced["explanation"], "A")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -21,7 +21,7 @@ from .context import extract_context
 from .errors import format_diagnostic
 from .evaluation import format_evaluation_report, run_comparative_study, run_evaluation_suite
 from .lexer import get_lexer_dfa
-from .llm import DEFAULT_MODEL, diagnose_and_repair
+from .llm import DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, diagnose_and_repair
 from .pipeline import compile_source
 from .semantic import format_symbol_table
 from .verifier import VerificationStatus, verify_fix
@@ -131,14 +131,30 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     primary_diag = result.diagnostics[0]
     ctx = extract_context(primary_diag, source, result.tokens, result.diagnostics)
 
-    # Invoke LLM diagnosis with chosen mode (typed vs generic)
-    offline = args.offline or not os.environ.get("GEMINI_API_KEY")
+    if getattr(args, "dump_prompt", False):
+        from .prompts import build_prompt
+        prompt = build_prompt(ctx, mode=args.mode)
+        print(f"=== System Instruction ===\n{prompt.system}\n")
+        print(f"=== User Prompt ({prompt.template}) ===\n{prompt.user}")
+        return EXIT_OK
+
+    # Determine offline vs online
+    has_key = bool(args.api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY"))
+    if args.offline is True:
+        offline = True
+    elif args.offline is False:
+        offline = False
+    else:
+        offline = not has_key
+
     try:
         llm_resp = diagnose_and_repair(
             ctx=ctx,
             mode=args.mode,
             offline=offline,
+            provider=args.provider,
             model=args.model,
+            api_key=args.api_key,
         )
     except Exception as exc:
         print(f"toycompiler: LLM diagnosis failed: {exc}", file=sys.stderr)
@@ -176,10 +192,11 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     print(format_diagnostic(primary_diag, color))
     print()
     print(f"{cyan}{bold}--- LLM Diagnosis [{llm_resp.prompt_used.template}] ---{reset}")
-    if offline:
+    if llm_resp.offline:
         print(f"{yellow}[Mode: Local Heuristic Mock / Offline]{reset}")
     else:
-        print(f"{green}[Model: {llm_resp.model} via Gemini Interactions API]{reset}")
+        provider_name = getattr(llm_resp, "provider", "groq").capitalize()
+        print(f"{green}[Model: {llm_resp.model} via {provider_name} Cloud API]{reset}")
     print()
     print(f"{bold}Explanation:{reset}\n{llm_resp.explanation}")
     print()
@@ -265,8 +282,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     diag.add_argument("file", help="path to a buggy .toy source file")
     diag.add_argument("--mode", choices=["typed", "generic"], default="typed",
                       help="prompting strategy: 'typed' (error-type-specific) or 'generic' (baseline)")
-    diag.add_argument("--offline", action="store_true", help="use local heuristic offline engine")
-    diag.add_argument("--model", default=DEFAULT_MODEL, help=f"Gemini model name (default: {DEFAULT_MODEL})")
+    diag.add_argument("--provider", choices=["auto", "groq", "gemini", "mock"], default="auto",
+                      help="LLM provider: 'auto' (detects GROQ_API_KEY then GEMINI_API_KEY), 'groq', 'gemini', or 'mock'")
+    diag.add_argument("--api-key", default=None, help="API key for Groq or Gemini (overrides environment variable)")
+    diag.add_argument("--offline", action="store_true", default=None, help="force use of local heuristic offline engine")
+    diag.add_argument("--online", dest="offline", action="store_false", help="force online cloud LLM inference")
+    diag.add_argument("--model", default=None, help=f"model name (default: {DEFAULT_MODEL} for Groq, {DEFAULT_GEMINI_MODEL} for Gemini)")
+    diag.add_argument("--dump-prompt", action="store_true", help="display the prompt constructed for the LLM and exit")
     diag.add_argument("--apply", action="store_true", help="write verified fix back to file if recompilation succeeds")
     diag.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     diag.add_argument("--no-color", action="store_true", help="disable ANSI colours")

@@ -26,8 +26,20 @@ from .errors import ErrorCode
 from .prompts import Prompt, RESPONSE_SCHEMA, build_prompt
 
 
-DEFAULT_MODEL = "gemini-3.8-flash"
-API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+DEFAULT_MODEL = DEFAULT_GROQ_MODEL
+
+PREFERRED_GROQ_MODELS = (
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+)
+
+GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+GEMINI_API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions"
 
 
 @dataclass
@@ -38,6 +50,7 @@ class LLMResponse:
     raw_response: str
     prompt_used: Prompt
     model: str
+    provider: str = "mock"
     offline: bool = False
 
     def to_dict(self) -> dict:
@@ -46,6 +59,7 @@ class LLMResponse:
             "fix_description": self.fix_description,
             "fixed_source": self.fixed_source,
             "model": self.model,
+            "provider": self.provider,
             "offline": self.offline,
             "template": self.prompt_used.template,
         }
@@ -87,15 +101,127 @@ def parse_llm_json(text: str) -> dict[str, str]:
     }
 
 
+class GroqClient:
+    """OpenAI-compatible client for Groq fast inference API."""
+
+    def __init__(self, api_key: str | None = None, model: str = DEFAULT_GROQ_MODEL):
+        self.api_key = api_key or os.environ.get("GROQ_API_KEY", "")
+        self.model = model
+
+    def _get_available_models(self) -> list[str]:
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/models",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "User-Agent": "ToyC-Compiler/1.0",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return [m["id"] for m in data.get("data", [])]
+        except Exception:
+            return []
+
+    def _call_api(self, model: str, prompt: Prompt) -> dict[str, Any]:
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": prompt.system},
+                {"role": "user", "content": prompt.user},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1,
+        }
+
+        req = urllib.request.Request(
+            GROQ_API_ENDPOINT,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+                "User-Agent": "ToyC-Compiler/1.0",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")
+            # If model was not found, raise specific ValueError to allow fallback
+            if e.code == 404 or "model_not_found" in err_body:
+                raise KeyError(f"model_not_found: {model}")
+            raise RuntimeError(f"Groq API request failed (HTTP {e.code}): {err_body}") from e
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Network error communicating with Groq API: {e.reason}") from e
+
+    def query(self, prompt: Prompt) -> LLMResponse:
+        """Call Groq chat completions API with structured JSON output."""
+        if not self.api_key:
+            raise ValueError(
+                "GROQ_API_KEY environment variable is not set. "
+                "Set GROQ_API_KEY, pass --api-key, or run with --offline."
+            )
+
+        active_model = self.model
+        try:
+            resp_data = self._call_api(active_model, prompt)
+        except KeyError:
+            # Model not found on this Groq account, discover available models
+            available = self._get_available_models()
+            fallback = None
+            for pref in PREFERRED_GROQ_MODELS:
+                if pref in available:
+                    fallback = pref
+                    break
+            if not fallback:
+                chat_candidates = [
+                    m for m in available
+                    if not any(x in m for x in ("whisper", "guard", "orpheus"))
+                ]
+                if chat_candidates:
+                    fallback = chat_candidates[0]
+
+            if not fallback:
+                raise RuntimeError(
+                    f"Model '{active_model}' not found on Groq and no suitable chat fallback was available."
+                )
+
+            active_model = fallback
+            resp_data = self._call_api(active_model, prompt)
+
+        choices = resp_data.get("choices", [])
+        if not choices:
+            raise RuntimeError(f"No choices returned by Groq API: {resp_data}")
+
+        raw_text = choices[0].get("message", {}).get("content", "")
+        if not raw_text:
+            raise RuntimeError(f"Empty content from Groq API: {resp_data}")
+
+        parsed = parse_llm_json(raw_text)
+        return LLMResponse(
+            explanation=parsed["explanation"],
+            fix_description=parsed["fix_description"],
+            fixed_source=parsed["fixed_source"],
+            raw_response=raw_text,
+            prompt_used=prompt,
+            model=active_model,
+            provider="groq",
+            offline=False,
+        )
+
+
 class GeminiClient:
     """Interactions API client for Google Gemini."""
 
-    def __init__(self, api_key: str | None = None, model: str = DEFAULT_MODEL):
+    def __init__(self, api_key: str | None = None, model: str = DEFAULT_GEMINI_MODEL):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
         self.model = model
 
     def query(self, prompt: Prompt) -> LLMResponse:
-        """Call the Gemini Interactions API using REST (urllib) or SDK."""
+        """Call the Gemini Interactions API using REST (urllib)."""
         if not self.api_key:
             raise ValueError(
                 "GEMINI_API_KEY environment variable is not set. "
@@ -114,7 +240,7 @@ class GeminiClient:
         }
 
         req = urllib.request.Request(
-            API_ENDPOINT,
+            GEMINI_API_ENDPOINT,
             data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
@@ -134,7 +260,6 @@ class GeminiClient:
             raise RuntimeError(f"Network error communicating with Gemini API: {e.reason}") from e
 
         # Extract output text from response
-        # Interactions API returns output_text or steps[model_output]
         raw_text = resp_data.get("output_text")
         if not raw_text:
             steps = resp_data.get("steps", [])
@@ -158,6 +283,7 @@ class GeminiClient:
             raw_response=raw_text,
             prompt_used=prompt,
             model=self.model,
+            provider="gemini",
             offline=False,
         )
 
@@ -191,6 +317,7 @@ class MockLLMClient:
             raw_response=raw_json,
             prompt_used=prompt,
             model=self.model,
+            provider="mock",
             offline=True,
         )
 
@@ -415,23 +542,46 @@ class MockLLMClient:
         return ("Compiler error diagnosed.", "Adjusted code.", source)
 
 
-def get_llm_client(offline: bool = False, model: str = DEFAULT_MODEL) -> GeminiClient | MockLLMClient:
-    """Return live GeminiClient if API key is set and offline=False, else MockLLMClient."""
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if offline or not api_key:
-        return MockLLMClient(model=f"{model}-offline" if not offline else "offline-mock")
-    return GeminiClient(api_key=api_key, model=model)
+def get_llm_client(
+    offline: bool = False,
+    provider: str = "auto",
+    model: str | None = None,
+    api_key: str | None = None,
+) -> GroqClient | GeminiClient | MockLLMClient:
+    """Return an LLM client based on requested provider or available environment keys."""
+    if offline or provider == "mock":
+        return MockLLMClient(model=f"{model or 'mock'}-offline" if not offline else "offline-mock")
+
+    groq_key = api_key if provider == "groq" else (api_key or os.environ.get("GROQ_API_KEY", ""))
+    gemini_key = api_key if provider == "gemini" else (api_key or os.environ.get("GEMINI_API_KEY", ""))
+
+    if provider == "groq":
+        return GroqClient(api_key=groq_key, model=model or DEFAULT_GROQ_MODEL)
+    elif provider == "gemini":
+        return GeminiClient(api_key=gemini_key, model=model or DEFAULT_GEMINI_MODEL)
+    elif provider == "auto":
+        # Prioritize Groq if GROQ_API_KEY is present
+        if groq_key:
+            return GroqClient(api_key=groq_key, model=model or DEFAULT_GROQ_MODEL)
+        elif gemini_key:
+            return GeminiClient(api_key=gemini_key, model=model or DEFAULT_GEMINI_MODEL)
+        else:
+            return MockLLMClient(model=f"{model or DEFAULT_GROQ_MODEL}-offline")
+
+    raise ValueError(f"Unknown LLM provider: {provider!r}. Choose 'auto', 'groq', 'gemini', or 'mock'.")
 
 
 def diagnose_and_repair(
     ctx: ErrorContext,
     mode: str = "typed",
     offline: bool = False,
-    model: str = DEFAULT_MODEL,
+    provider: str = "auto",
+    model: str | None = None,
+    api_key: str | None = None,
 ) -> LLMResponse:
     """End-to-end prompt dispatch, LLM inference, and response parsing."""
     prompt = build_prompt(ctx, mode=mode)
-    client = get_llm_client(offline=offline, model=model)
+    client = get_llm_client(offline=offline, provider=provider, model=model, api_key=api_key)
     if isinstance(client, MockLLMClient):
         return client.query(prompt, ctx=ctx)
     return client.query(prompt)
