@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -134,28 +135,32 @@ class GroqClient:
             "temperature": 0.1,
         }
 
-        req = urllib.request.Request(
-            GROQ_API_ENDPOINT,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-                "User-Agent": "ToyC-Compiler/1.0",
-            },
-            method="POST",
-        )
+        for attempt in range(4):
+            req = urllib.request.Request(
+                GROQ_API_ENDPOINT,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}",
+                    "User-Agent": "ToyC-Compiler/1.0",
+                },
+                method="POST",
+            )
 
-        try:
-            with urllib.request.urlopen(req, timeout=45) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8", errors="replace")
-            # If model was not found, raise specific ValueError to allow fallback
-            if e.code == 404 or "model_not_found" in err_body:
-                raise KeyError(f"model_not_found: {model}")
-            raise RuntimeError(f"Groq API request failed (HTTP {e.code}): {err_body}") from e
-        except urllib.error.URLError as e:
-            raise RuntimeError(f"Network error communicating with Groq API: {e.reason}") from e
+            try:
+                with urllib.request.urlopen(req, timeout=45) as resp:
+                    return json.loads(resp.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="replace")
+                if e.code == 404 or "model_not_found" in err_body:
+                    raise KeyError(f"model_not_found: {model}")
+                if e.code == 429 and attempt < 3:
+                    time.sleep(2.5 * (attempt + 1))
+                    continue
+                raise RuntimeError(f"Groq API request failed (HTTP {e.code}): {err_body}") from e
+            except urllib.error.URLError as e:
+                raise RuntimeError(f"Network error communicating with Groq API: {e.reason}") from e
+        raise RuntimeError("Groq API rate limit exceeded after retries")
 
     def query(self, prompt: Prompt) -> LLMResponse:
         """Call Groq chat completions API with structured JSON output."""

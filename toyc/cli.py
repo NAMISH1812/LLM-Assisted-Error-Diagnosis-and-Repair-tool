@@ -232,8 +232,20 @@ def cmd_eval(args: argparse.Namespace) -> int:
     cyan = "\033[36m" if color else ""
     reset = "\033[0m" if color else ""
 
-    print(f"{cyan}{bold}Running LLM-Assisted Compiler Evaluation Suite...{reset}\n")
-    study = run_comparative_study(offline=args.offline)
+    has_key = bool(getattr(args, "api_key", None) or os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY"))
+    if args.offline is True:
+        offline = True
+    elif args.offline is False:
+        offline = False
+    else:
+        offline = not has_key
+
+    print(f"{cyan}{bold}Running LLM-Assisted Compiler Evaluation Suite ({'Offline' if offline else 'Online Cloud'})...{reset}\n")
+    study = run_comparative_study(
+        offline=offline,
+        provider=getattr(args, "provider", "auto"),
+        api_key=getattr(args, "api_key", None),
+    )
 
     report = format_evaluation_report(study)
     print(report)
@@ -301,8 +313,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     # eval
     ev = sub.add_parser("eval", help="run comparative study & ablation benchmark suite")
-    ev.add_argument("--offline", action="store_true", default=True, help="run evaluation using deterministic offline model")
-    ev.add_argument("--online", dest="offline", action="store_false", help="run evaluation using live Gemini API")
+    ev.add_argument("--offline", action="store_true", default=None, help="run evaluation using deterministic offline model")
+    ev.add_argument("--online", dest="offline", action="store_false", help="run evaluation using live Cloud LLM API")
+    ev.add_argument("--provider", choices=["auto", "groq", "gemini", "mock"], default="auto", help="LLM provider")
+    ev.add_argument("--api-key", default=None, help="API key for Groq or Gemini")
     ev.add_argument("--output", "-o", default="evaluation_report.md", help="output path for markdown evaluation report")
     ev.add_argument("--json", action="store_true", help="also emit machine-readable JSON results")
     ev.add_argument("--no-color", action="store_true", help="disable ANSI colours")

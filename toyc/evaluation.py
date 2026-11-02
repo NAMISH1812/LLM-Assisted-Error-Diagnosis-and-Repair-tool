@@ -160,7 +160,13 @@ def simulate_gcc_error(diag, source: str) -> str:
     return f"error: {msg} at line {line}:{col}"
 
 
-def run_benchmark_item(filepath: str | pathlib.Path, mode: str = "typed", offline: bool = True) -> BenchmarkItemResult:
+def run_benchmark_item(
+    filepath: str | pathlib.Path,
+    mode: str = "typed",
+    offline: bool = True,
+    provider: str = "auto",
+    api_key: str | None = None,
+) -> BenchmarkItemResult:
     """Run one benchmark test case through the diagnosis and repair pipeline."""
     path = pathlib.Path(filepath)
     source = path.read_text(encoding="utf-8")
@@ -174,7 +180,7 @@ def run_benchmark_item(filepath: str | pathlib.Path, mode: str = "typed", offlin
     ctx = extract_context(primary_diag, source, res.tokens, res.diagnostics)
     prompt = build_prompt(ctx, mode=mode)
 
-    client = get_llm_client(offline=offline)
+    client = get_llm_client(offline=offline, provider=provider, api_key=api_key)
     if isinstance(client, MockLLMClient):
         llm_resp = client.query(prompt, ctx=ctx)
     else:
@@ -208,7 +214,12 @@ def run_benchmark_item(filepath: str | pathlib.Path, mode: str = "typed", offlin
     )
 
 
-def run_evaluation_suite(mode: str = "typed", offline: bool = True) -> EvaluationSummary:
+def run_evaluation_suite(
+    mode: str = "typed",
+    offline: bool = True,
+    provider: str = "auto",
+    api_key: str | None = None,
+) -> EvaluationSummary:
     """Run the entire 20-item benchmark suite under the chosen prompting mode."""
     files = sorted(glob.glob(str(BENCHMARK_DIR / "*.toy")))
     if not files:
@@ -216,7 +227,8 @@ def run_evaluation_suite(mode: str = "typed", offline: bool = True) -> Evaluatio
 
     results: list[BenchmarkItemResult] = []
     for f in files:
-        results.append(run_benchmark_item(f, mode=mode, offline=offline))
+        item = run_benchmark_item(f, mode=mode, offline=offline, provider=provider, api_key=api_key)
+        results.append(item)
 
     verified = sum(1 for r in results if r.verification_status == VerificationStatus.VERIFIED.value)
     partial = sum(1 for r in results if r.verification_status == VerificationStatus.PARTIAL.value)
@@ -236,10 +248,14 @@ def run_evaluation_suite(mode: str = "typed", offline: bool = True) -> Evaluatio
     )
 
 
-def run_comparative_study(offline: bool = True) -> dict[str, Any]:
+def run_comparative_study(
+    offline: bool = True,
+    provider: str = "auto",
+    api_key: str | None = None,
+) -> dict[str, Any]:
     """Execute both typed prompting and generic baseline across all benchmarks."""
-    typed_summary = run_evaluation_suite(mode="typed", offline=offline)
-    generic_summary = run_evaluation_suite(mode="generic", offline=offline)
+    typed_summary = run_evaluation_suite(mode="typed", offline=offline, provider=provider, api_key=api_key)
+    generic_summary = run_evaluation_suite(mode="generic", offline=offline, provider=provider, api_key=api_key)
 
     return {
         "typed": typed_summary.to_dict(),
